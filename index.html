@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Granville Swimming — Apparel Order Form</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --pad: 14px; --radius: 12px; }
+    body { font-family: system-ui, Arial, sans-serif; margin: 32px; }
+    h1 { margin: 0 0 8px; }
+    .subtitle { color: #555; margin-bottom: 18px; }
+    .card {
+      border: 1px solid #e5e5e5; border-radius: var(--radius);
+      padding: var(--pad); margin-bottom: 18px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    label { display: block; font-weight: 600; margin-top: 10px; }
+    input[type="text"], input[type="number"], select {
+      width: 100%; padding: 10px; border-radius: 10px;
+      border: 1px solid #dcdcdc; margin-top: 6px;
+    }
+    .row { display: grid; gap: 12px; grid-template-columns: repeat(4, 1fr); }
+    .row > div { min-width: 0; }
+    button {
+      padding: 10px 14px; border-radius: 999px; border: 1px solid #dcdcdc;
+      background: #0a66ff; color: white; cursor: pointer; font-weight: 600;
+    }
+    button.secondary { background: white; color: #333; }
+    button.link { background: transparent; border: none; color: #0a66ff; padding: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; }
+    th { background: #fafafa; }
+    tfoot td { font-weight: 700; }
+    .right { text-align: right; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .note { color: #666; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <h1>Granville Swimming</h1>
+  <div class="subtitle">Team Apparel Order Form</div>
+
+  <div class="card">
+    <label for="name">Swimmer/Parent Name</label>
+    <input type="text" id="name" placeholder="Your name" autocomplete="name" />
+
+    <div class="row" style="margin-top:12px">
+      <div>
+        <label for="item">Item</label>
+        <select id="item">
+          <!-- Edit items/prices here -->
+          <option value="T-Shirt" data-price="20">T-Shirt ($20)</option>
+          <option value="Hoodie" data-price="35">Hoodie ($35)</option>
+          <option value="Cap" data-price="15">Cap ($15)</option>
+          <option value="Sweatpants" data-price="30">Sweatpants ($30)</option>
+        </select>
+      </div>
+      <div>
+        <label for="size">Size</label>
+        <select id="size">
+          <!-- Edit sizes here -->
+          <option>YS</option><option>YM</option><option>YL</option>
+          <option>S</option><option>M</option><option>L</option>
+          <option>XL</option><option>XXL</option>
+        </select>
+      </div>
+      <div>
+        <label for="qty">Quantity</label>
+        <input type="number" id="qty" value="1" min="1" step="1" />
+      </div>
+      <div style="display:flex; align-items:end;">
+        <button id="addBtn" type="button" title="Add this item to the order">Add to Order</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="resetBtn" class="secondary" type="button">Reset Order</button>
+      <button id="printBtn" class="secondary" type="button">Print / Save PDF</button>
+      <button id="downloadBtn" class="secondary" type="button">Download CSV</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Order Summary</h3>
+    <div class="note">Click “Remove” to delete a line.</div>
+    <table id="orderTable" aria-label="Order items">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Size</th>
+          <th class="right">Qty</th>
+          <th class="right">Price Each</th>
+          <th class="right">Line Total</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="orderBody">
+        <!-- rows injected here -->
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" class="right">Grand Total</td>
+          <td class="right" id="grandTotal">$0.00</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Submit / Share</h3>
+    <p class="note">
+      You can print this page as a PDF and email it, or use the CSV to consolidate orders.
+      If you plan to collect payments, we can add a simple payment note or QR code here.
+    </p>
+  </div>
+
+  <script>
+    (function () {
+      const nameEl = document.getElementById('name');
+      const itemEl = document.getElementById('item');
+      const sizeEl = document.getElementById('size');
+      const qtyEl  = document.getElementById('qty');
+      const addBtn = document.getElementById('addBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const printBtn = document.getElementById('printBtn');
+      const downloadBtn = document.getElementById('downloadBtn');
+
+      const orderBody = document.getElementById('orderBody');
+      const grandTotalEl = document.getElementById('grandTotal');
+
+      /** State */
+      const order = []; // {item, size, qty, priceEach, total}
+
+      function money(n) {
+        return `$${(Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2)}`;
+      }
+
+      function render() {
+        orderBody.innerHTML = '';
+        let grand = 0;
+        order.forEach((line, idx) => {
+          const tr = document.createElement('tr');
+
+          const tdItem = document.createElement('td');
+          tdItem.textContent = line.item;
+
+          const tdSize = document.createElement('td');
+          tdSize.textContent = line.size;
+
+          const tdQty = document.createElement('td');
+          tdQty.className = 'right';
+          tdQty.textContent = line.qty;
+
+          const tdPrice = document.createElement('td');
+          tdPrice.className = 'right';
+          tdPrice.textContent = money(line.priceEach);
+
+          const tdTotal = document.createElement('td');
+          tdTotal.className = 'right';
+          tdTotal.textContent = money(line.total);
+
+          const tdRemove = document.createElement('td');
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'link';
+          btn.textContent = 'Remove';
+          btn.addEventListener('click', () => {
+            order.splice(idx, 1);
+            render();
+          });
+          tdRemove.appendChild(btn);
+
+          tr.append(tdItem, tdSize, tdQty, tdPrice, tdTotal, tdRemove);
+          orderBody.appendChild(tr);
+
+          grand += line.total;
+        });
+        grandTotalEl.textContent = money(grand);
+      }
+
+      function addLine() {
+        const itemOpt = itemEl.selectedOptions[0];
+        const item = itemOpt ? itemOpt.value : '';
+        const price = itemOpt ? parseFloat(itemOpt.dataset.price) : NaN;
+        const size = sizeEl.value;
+        const qty = parseInt(qtyEl.value, 10);
+
+        if (!nameEl.value.trim()) {
+          alert('Please enter a name at the top.');
+          nameEl.focus();
+          return;
+        }
+        if (!item || isNaN(price)) {
+          alert('Please select a valid item.');
+          itemEl.focus();
+          return;
+        }
+        if (!size) {
+          alert('Please select a size.');
+          sizeEl.focus();
+          return;
+        }
+        if (!qty || qty < 1) {
+          alert('Quantity must be at least 1.');
+          qtyEl.focus();
+          return;
+        }
+
+        const total = price * qty;
+        order.push({ item, size, qty, priceEach: price, total });
+        render();
+      }
+
+      function resetOrder() {
+        if (order.length === 0 && !nameEl.value.trim()) return;
+        if (confirm('Clear the name and all order lines?')) {
+          order.splice(0, order.length);
+          nameEl.value = '';
+          render();
+        }
+      }
+
+      function printOrder() {
+        window.print();
+      }
+
+      function downloadCSV() {
+        // Build CSV from state
+        const rows = [
+          ['Name', nameEl.value.trim()],
+          [],
+          ['Item', 'Size', 'Qty', 'Price Each', 'Line Total']
+        ];
+        order.forEach(l =>
+          rows.push([l.item, l.size, String(l.qty), l.priceEach.toFixed(2), l.total.toFixed(2)])
+        );
+        rows.push([]);
+        const grand = order.reduce((s, l) => s + l.total, 0);
+        rows.push(['Grand Total', '', '', '', grand.toFixed(2)]);
+
+        const csv = rows.map(r =>
+          r.map((cell = '') => {
+            const needsQuotes = /[",\n]/.test(cell);
+            const c = String(cell).replaceAll('"', '""');
+            return needsQuotes ? `"${c}"` : c;
+          }).join(',')
+        ).join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const fileNameSafe = (nameEl.value.trim() || 'order').replace(/[^a-z0-9-_]+/gi, '_');
+        a.href = url;
+        a.download = `granville_swim_${fileNameSafe}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      addBtn.addEventListener('click', addLine);
+      resetBtn.addEventListener('click', resetOrder);
+      printBtn.addEventListener('click', printOrder);
+      downloadBtn.addEventListener('click', downloadCSV);
+
+      // Basic keyboard support: Enter key on qty adds line
+      qtyEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addLine();
+        }
+      });
+
+      // Initialize
+      render();
+    })();
+  </script>
+</body>
+</html>

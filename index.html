@@ -125,6 +125,7 @@
       const resetBtn = document.getElementById('resetBtn');
       const printBtn = document.getElementById('printBtn');
       const downloadBtn = document.getElementById('downloadBtn');
+      const saveDropboxBtn = document.getElementById('saveDropboxBtn');
 
       const orderBody = document.getElementById('orderBody');
       const grandTotalEl = document.getElementById('grandTotal');
@@ -259,10 +260,50 @@
         URL.revokeObjectURL(url);
       }
 
+      async function saveToDropbox() {
+        if (!nameEl.value.trim()) {
+          alert('Please enter a name at the top.');
+          nameEl.focus();
+          return;
+        }
+        if (order.length === 0) {
+          alert('Please add at least one item to the order.');
+          return;
+        }
+      
+        const csv = buildCSV(); // you already have this helper
+        const fileNameSafe = (nameEl.value.trim() || 'order').replace(/[^a-z0-9-_]+/gi, '_');
+      
+        // NOTE: the server function prefixes the “/Orders/” folder on Dropbox.
+        // We just send a basename here; the function constructs the final path.
+        const payload = {
+          filename: `granville_swim_${fileNameSafe}_${Date.now()}.csv`,
+          content: csv
+        };
+      
+        try {
+          const ENDPOINT_URL = 'https://swim-order-endpoints.vercel.app/api/save-dropbox';
+          const res = await fetch(ENDPOINT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || `HTTP ${res.status}`);
+          }
+          alert('Saved to Dropbox! ✅');
+        } catch (e) {
+          console.error(e);
+          alert('Could not save to Dropbox. See console for details.');
+        }
+      }
+
       addBtn.addEventListener('click', addLine);
       resetBtn.addEventListener('click', resetOrder);
       printBtn.addEventListener('click', printOrder);
       downloadBtn.addEventListener('click', downloadCSV);
+      saveDropboxBtn.addEventListener('click', saveToDropbox);
 
       // Basic keyboard support: Enter key on qty adds line
       qtyEl.addEventListener('keydown', (e) => {

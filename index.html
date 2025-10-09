@@ -76,6 +76,7 @@
       <button id="resetBtn" class="secondary" type="button">Reset Order</button>
       <button id="printBtn" class="secondary" type="button">Print / Save PDF</button>
       <button id="downloadBtn" class="secondary" type="button">Download CSV</button>
+      <button id="emailBtn" class="secondary" type="button">Email CSV</button>
       <button id="saveDropboxBtn" class="secondary" type="button">Save to Dropbox</button>
     </div>
   </div>
@@ -125,6 +126,8 @@
       const resetBtn = document.getElementById('resetBtn');
       const printBtn = document.getElementById('printBtn');
       const downloadBtn = document.getElementById('downloadBtn');
+      const emailBtn = document.getElementById('emailBtn');
+      const saveGitHubBtn = document.getElementById('saveGitHubBtn');
       const saveDropboxBtn = document.getElementById('saveDropboxBtn');
 
       const orderBody = document.getElementById('orderBody');
@@ -132,6 +135,67 @@
 
       /** State */
       const order = []; // {item, size, qty, priceEach, total}
+      function buildCSV() {
+        const rows = [
+          ['Name', nameEl.value.trim()],
+          [],
+          ['Item', 'Size', 'Qty', 'Price Each', 'Line Total']
+        ];
+        order.forEach(l =>
+          rows.push([l.item, l.size, String(l.qty), l.priceEach.toFixed(2), l.total.toFixed(2)])
+        );
+        rows.push([]);
+        const grand = order.reduce((s, l) => s + l.total, 0);
+        rows.push(['Grand Total', '', '', '', grand.toFixed(2)]);
+
+        return rows.map(r =>
+          r.map((cell = '') => {
+            const needsQuotes = /[",\n]/.test(cell);
+            const c = String(cell).replaceAll('"', '""');
+            return needsQuotes ? `"${c}"` : c;
+          }).join(',')
+        ).join('\n');
+      }
+      async function saveToGitHub() {
+        // Placeholder for Save to GitHub logic
+        alert('Save to GitHub not implemented.');
+      }
+
+      async function saveToDropbox() {
+        try {
+          if (!nameEl.value.trim()) {
+            alert('Please enter a name at the top.');
+            nameEl.focus();
+            return;
+          }
+          if (order.length === 0) {
+            alert('Please add at least one item to the order.');
+            return;
+          }
+          const csv = buildCSV();
+          const fileNameSafe = (nameEl.value.trim() || 'order').replace(/[^a-z0-9-_]+/gi, '_');
+          const payload = {
+            filename: `granville_swim_${fileNameSafe}_${Date.now()}.csv`,
+            content: csv
+          };
+          const ENDPOINT_URL = 'https://swim-order-endpoints.vercel.app/api/save-dropbox';
+          console.log('[SaveToDropbox] POST', ENDPOINT_URL, payload);
+          const res = await fetch(ENDPOINT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const text = await res.text();
+          console.log('[SaveToDropbox] status', res.status, 'body', text);
+          if (!res.ok) {
+            throw new Error(text || `HTTP ${res.status}`);
+          }
+          alert('Saved to Dropbox! ✅');
+        } catch (err) {
+          console.error('[SaveToDropbox] error', err);
+          alert('Could not save to Dropbox. Open the browser console for details.');
+        }
+      }
 
       function money(n) {
         return `$${(Math.round((n + Number.EPSILON) * 100) / 100).toFixed(2)}`;
@@ -260,49 +324,12 @@
         URL.revokeObjectURL(url);
       }
 
-      async function saveToDropbox() {
-        if (!nameEl.value.trim()) {
-          alert('Please enter a name at the top.');
-          nameEl.focus();
-          return;
-        }
-        if (order.length === 0) {
-          alert('Please add at least one item to the order.');
-          return;
-        }
-      
-        const csv = buildCSV(); // you already have this helper
-        const fileNameSafe = (nameEl.value.trim() || 'order').replace(/[^a-z0-9-_]+/gi, '_');
-      
-        // NOTE: the server function prefixes the “/Orders/” folder on Dropbox.
-        // We just send a basename here; the function constructs the final path.
-        const payload = {
-          filename: `granville_swim_${fileNameSafe}_${Date.now()}.csv`,
-          content: csv
-        };
-      
-        try {
-          const ENDPOINT_URL = 'https://swim-order-endpoints.vercel.app/api/save-dropbox';
-          const res = await fetch(ENDPOINT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || `HTTP ${res.status}`);
-          }
-          alert('Saved to Dropbox! ✅');
-        } catch (e) {
-          console.error(e);
-          alert('Could not save to Dropbox. See console for details.');
-        }
-      }
-
       addBtn.addEventListener('click', addLine);
       resetBtn.addEventListener('click', resetOrder);
       printBtn.addEventListener('click', printOrder);
       downloadBtn.addEventListener('click', downloadCSV);
+      emailBtn.addEventListener('click', emailCSV);
+      saveGitHubBtn.addEventListener('click', saveToGitHub);
       saveDropboxBtn.addEventListener('click', saveToDropbox);
 
       // Basic keyboard support: Enter key on qty adds line

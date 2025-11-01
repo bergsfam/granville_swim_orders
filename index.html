@@ -19,7 +19,11 @@
       width: 100%; padding: 10px; border-radius: 10px;
       border: 1px solid #dcdcdc; margin-top: 6px;
     }
-    .row { display: grid; gap: 12px; grid-template-columns: repeat(4, 1fr); }
+    .row {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
     .contact-grid {
       display: grid;
       gap: 12px;
@@ -68,22 +72,16 @@
     <div class="row" style="margin-top:12px">
       <div>
         <label for="item">Item</label>
-        <select id="item">
-          <!-- Edit items/prices here -->
-          <option value="T-Shirt" data-price="20">T-Shirt ($20)</option>
-          <option value="Hoodie" data-price="35">Hoodie ($35)</option>
-          <option value="Cap" data-price="15">Cap ($15)</option>
-          <option value="Sweatpants" data-price="30">Sweatpants ($30)</option>
-        </select>
+        <select id="item"></select>
+      </div>
+      <div>
+        <label for="color">Color</label>
+        <select id="color"></select>
       </div>
       <div>
         <label for="size">Size</label>
-        <select id="size">
-          <!-- Edit sizes here -->
-          <option>YS</option><option>YM</option><option>YL</option>
-          <option>S</option><option>M</option><option>L</option>
-          <option>XL</option><option>XXL</option>
-        </select>
+        <select id="size"></select>
+        <div class="note" style="margin-top:4px">XXL and XXXL add $3.</div>
       </div>
       <div>
         <label for="qty">Quantity</label>
@@ -107,6 +105,7 @@
       <thead>
         <tr>
           <th>Item</th>
+          <th>Color</th>
           <th>Size</th>
           <th class="right">Qty</th>
           <th class="right">Price Each</th>
@@ -119,7 +118,7 @@
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="4" class="right">Grand Total</td>
+          <td colspan="5" class="right">Grand Total</td>
           <td class="right" id="grandTotal">$0.00</td>
           <td></td>
         </tr>
@@ -142,6 +141,7 @@
       const emailEl = document.getElementById('email');
       const cellEl = document.getElementById('cell');
       const itemEl = document.getElementById('item');
+      const colorEl = document.getElementById('color');
       const sizeEl = document.getElementById('size');
       const qtyEl  = document.getElementById('qty');
       const addBtn = document.getElementById('addBtn');
@@ -152,8 +152,72 @@
       const orderBody = document.getElementById('orderBody');
       const grandTotalEl = document.getElementById('grandTotal');
 
+      const SURCHARGE_SIZES = {
+        XXL: 3,
+        XXXL: 3
+      };
+
+      const ITEMS = [
+        { id: 'team-tshirt', name: 'Team T-shirt', basePrice: 20, colors: ['Navy'], sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
+        { id: 'nike-tshirt', name: 'Nike T-shirt', basePrice: 35, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
+        { id: 'comfort-crew-sweatshirt', name: 'Comfort Crew Sweatshirt', basePrice: 40, colors: ['Navy', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
+        { id: 'gilden-crew-sweatshirt', name: 'Gilden Crew Sweatshirt', basePrice: 25, colors: ['Navy', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
+        { id: 'nike-crew-sweatshirt', name: 'Nike Crew Sweatshirt', basePrice: 55, colors: ['Navy', 'Gray'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
+        { id: 'hooded-sweatshirt', name: 'Hooded Sweatshirt', basePrice: 30, colors: ['Navy', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
+        { id: 'nike-fleece-quarter-zip', name: 'Nike Fleece Quarter Zip', basePrice: 55, colors: ['Navy', 'Gray', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
+        { id: 'windbreaker', name: 'Windbreaker', basePrice: 50, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL'] },
+        { id: 'nike-joggers', name: 'Nike Joggers', basePrice: 55, colors: ['Navy', 'Gray'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
+        { id: 'holloway-joggers', name: 'Holloway Joggers', basePrice: 55, colors: ['Navy', 'Gray'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
+        { id: 'womens-tank-top', name: 'Womens Tank Top', basePrice: 20, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
+        { id: 'pajama-pants', name: 'Pajama Pants', basePrice: 25, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
+        { id: 'microterary-cardigan', name: 'Microterary Cardigan', basePrice: 40, colors: ['Gray', 'Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
+        { id: 'microfiber-towel', name: 'Microfiber Towel', basePrice: 12, colors: ['Navy'], sizes: ['28x56'] },
+        { id: 'car-magnet', name: 'Car Magnet', basePrice: 5, colors: ['N/A'], sizes: ['N/A'] },
+        { id: 'chromebook-sticker', name: 'Chromebook Sticker', basePrice: 5, colors: ['N/A'], sizes: ['N/A'] }
+      ];
+
+      const itemsById = new Map(ITEMS.map(item => [item.id, item]));
+
       /** State */
-      const order = []; // {item, size, qty, priceEach, total}
+      const order = []; // {item, color, size, qty, priceEach, total}
+      function populateItemOptions() {
+        itemEl.innerHTML = '';
+        ITEMS.forEach((item) => {
+          const option = document.createElement('option');
+          option.value = item.id;
+          option.textContent = `${item.name} ($${item.basePrice.toFixed(2)})`;
+          itemEl.appendChild(option);
+        });
+      }
+
+      function populateSelectOptions(selectEl, values) {
+        selectEl.innerHTML = '';
+        values.forEach((value) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = value;
+          selectEl.appendChild(option);
+        });
+      }
+
+      function updateDependentSelects() {
+        const selectedItem = itemsById.get(itemEl.value) || ITEMS[0];
+        if (!selectedItem) {
+          colorEl.innerHTML = '';
+          sizeEl.innerHTML = '';
+          return;
+        }
+        populateSelectOptions(colorEl, selectedItem.colors);
+        populateSelectOptions(sizeEl, selectedItem.sizes);
+        colorEl.disabled = selectedItem.colors.length === 1 && selectedItem.colors[0] === 'N/A';
+        sizeEl.disabled = selectedItem.sizes.length === 1 && selectedItem.sizes[0] === 'N/A';
+      }
+
+      function computePrice(item, size) {
+        const surcharge = SURCHARGE_SIZES[size] || 0;
+        return item.basePrice + surcharge;
+      }
+
       function buildCSV() {
         const rows = [
           ['Parent Name', parentNameEl.value.trim()],
@@ -161,14 +225,14 @@
           ['Email', emailEl.value.trim()],
           ['Cell', cellEl.value.trim()],
           [],
-          ['Item', 'Size', 'Qty', 'Price Each', 'Line Total']
+          ['Item', 'Color', 'Size', 'Qty', 'Price Each', 'Line Total']
         ];
         order.forEach(l =>
-          rows.push([l.item, l.size, String(l.qty), l.priceEach.toFixed(2), l.total.toFixed(2)])
+          rows.push([l.item, l.color, l.size, String(l.qty), l.priceEach.toFixed(2), l.total.toFixed(2)])
         );
         rows.push([]);
         const grand = order.reduce((s, l) => s + l.total, 0);
-        rows.push(['Grand Total', '', '', '', grand.toFixed(2)]);
+        rows.push(['Grand Total', '', '', '', '', grand.toFixed(2)]);
 
         return rows.map(r =>
           r.map((cell = '') => {
@@ -232,6 +296,9 @@
           const tdItem = document.createElement('td');
           tdItem.textContent = line.item;
 
+          const tdColor = document.createElement('td');
+          tdColor.textContent = line.color;
+
           const tdSize = document.createElement('td');
           tdSize.textContent = line.size;
 
@@ -258,7 +325,7 @@
           });
           tdRemove.appendChild(btn);
 
-          tr.append(tdItem, tdSize, tdQty, tdPrice, tdTotal, tdRemove);
+          tr.append(tdItem, tdColor, tdSize, tdQty, tdPrice, tdTotal, tdRemove);
           orderBody.appendChild(tr);
 
           grand += line.total;
@@ -267,23 +334,29 @@
       }
 
       function addLine() {
-        const itemOpt = itemEl.selectedOptions[0];
-        const item = itemOpt ? itemOpt.value : '';
-        const price = itemOpt ? parseFloat(itemOpt.dataset.price) : NaN;
-        const size = sizeEl.value;
+        const selectedItem = itemsById.get(itemEl.value);
+        const color = colorEl.value || (colorEl.disabled ? 'N/A' : '');
+        const sizeValue = sizeEl.value || (sizeEl.disabled ? 'N/A' : '');
         const qty = parseInt(qtyEl.value, 10);
+        const normalizedColor = color || 'N/A';
+        const normalizedSize = sizeValue || 'N/A';
 
         if (!parentNameEl.value.trim()) {
           alert('Please enter a parent name at the top.');
           parentNameEl.focus();
           return;
         }
-        if (!item || isNaN(price)) {
+        if (!selectedItem) {
           alert('Please select a valid item.');
           itemEl.focus();
           return;
         }
-        if (!size) {
+        if (!normalizedColor && !colorEl.disabled) {
+          alert('Please select a color.');
+          colorEl.focus();
+          return;
+        }
+        if (!normalizedSize && !sizeEl.disabled) {
           alert('Please select a size.');
           sizeEl.focus();
           return;
@@ -294,8 +367,16 @@
           return;
         }
 
+        const price = computePrice(selectedItem, normalizedSize);
         const total = price * qty;
-        order.push({ item, size, qty, priceEach: price, total });
+        order.push({
+          item: selectedItem.name,
+          color: normalizedColor,
+          size: normalizedSize,
+          qty,
+          priceEach: price,
+          total
+        });
         render();
       }
 
@@ -315,6 +396,11 @@
           swimmerNamesEl.value = '';
           emailEl.value = '';
           cellEl.value = '';
+          if (ITEMS.length > 0) {
+            itemEl.value = ITEMS[0].id;
+          }
+          updateDependentSelects();
+          qtyEl.value = 1;
           render();
         }
       }
@@ -323,6 +409,13 @@
         window.print();
       }
 
+      populateItemOptions();
+      if (ITEMS.length > 0) {
+        itemEl.value = ITEMS[0].id;
+      }
+      updateDependentSelects();
+
+      itemEl.addEventListener('change', updateDependentSelects);
       addBtn.addEventListener('click', addLine);
       resetBtn.addEventListener('click', resetOrder);
       printBtn.addEventListener('click', printOrder);

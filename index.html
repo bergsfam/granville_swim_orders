@@ -15,11 +15,16 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
     label { display: block; font-weight: 600; margin-top: 10px; }
-    input[type="text"], input[type="number"], select {
+    input[type="text"], input[type="number"], input[type="email"], input[type="tel"], select {
       width: 100%; padding: 10px; border-radius: 10px;
       border: 1px solid #dcdcdc; margin-top: 6px;
     }
     .row { display: grid; gap: 12px; grid-template-columns: repeat(4, 1fr); }
+    .contact-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
     .row > div { min-width: 0; }
     button {
       padding: 10px 14px; border-radius: 999px; border: 1px solid #dcdcdc;
@@ -41,8 +46,24 @@
   <div class="subtitle">Team Apparel Order Form</div>
 
   <div class="card">
-    <label for="name">Swimmer/Parent Name</label>
-    <input type="text" id="name" placeholder="Your name" autocomplete="name" />
+    <div class="contact-grid">
+      <div>
+        <label for="parentName">Parent Name</label>
+        <input type="text" id="parentName" placeholder="Parent name" autocomplete="name" />
+      </div>
+      <div>
+        <label for="swimmerNames">Swimmer Name(s)</label>
+        <input type="text" id="swimmerNames" placeholder="Swimmer name(s)" autocomplete="off" />
+      </div>
+      <div>
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="name@example.com" autocomplete="email" />
+      </div>
+      <div>
+        <label for="cell">Cell</label>
+        <input type="tel" id="cell" placeholder="555-555-5555" autocomplete="tel" />
+      </div>
+    </div>
 
     <div class="row" style="margin-top:12px">
       <div>
@@ -75,8 +96,6 @@
     <div class="actions">
       <button id="resetBtn" class="secondary" type="button">Reset Order</button>
       <button id="printBtn" class="secondary" type="button">Print / Save PDF</button>
-      <button id="downloadBtn" class="secondary" type="button">Download CSV</button>
-      <button id="emailBtn" class="secondary" type="button">Email CSV</button>
       <button id="saveDropboxBtn" class="secondary" type="button">Save to Dropbox</button>
     </div>
   </div>
@@ -118,16 +137,16 @@
 
   <script>
     (function () {
-      const nameEl = document.getElementById('name');
+      const parentNameEl = document.getElementById('parentName');
+      const swimmerNamesEl = document.getElementById('swimmerNames');
+      const emailEl = document.getElementById('email');
+      const cellEl = document.getElementById('cell');
       const itemEl = document.getElementById('item');
       const sizeEl = document.getElementById('size');
       const qtyEl  = document.getElementById('qty');
       const addBtn = document.getElementById('addBtn');
       const resetBtn = document.getElementById('resetBtn');
       const printBtn = document.getElementById('printBtn');
-      const downloadBtn = document.getElementById('downloadBtn');
-      const emailBtn = document.getElementById('emailBtn');
-      const saveGitHubBtn = document.getElementById('saveGitHubBtn');
       const saveDropboxBtn = document.getElementById('saveDropboxBtn');
 
       const orderBody = document.getElementById('orderBody');
@@ -137,7 +156,10 @@
       const order = []; // {item, size, qty, priceEach, total}
       function buildCSV() {
         const rows = [
-          ['Name', nameEl.value.trim()],
+          ['Parent Name', parentNameEl.value.trim()],
+          ['Swimmer Name(s)', swimmerNamesEl.value.trim()],
+          ['Email', emailEl.value.trim()],
+          ['Cell', cellEl.value.trim()],
           [],
           ['Item', 'Size', 'Qty', 'Price Each', 'Line Total']
         ];
@@ -163,9 +185,9 @@
 
       async function saveToDropbox() {
         try {
-          if (!nameEl.value.trim()) {
-            alert('Please enter a name at the top.');
-            nameEl.focus();
+          if (!parentNameEl.value.trim()) {
+            alert('Please enter a parent name at the top.');
+            parentNameEl.focus();
             return;
           }
           if (order.length === 0) {
@@ -173,7 +195,7 @@
             return;
           }
           const csv = buildCSV();
-          const fileNameSafe = (nameEl.value.trim() || 'order').replace(/[^a-z0-9-_]+/gi, '_');
+          const fileNameSafe = (parentNameEl.value.trim() || 'order').replace(/[^a-z0-9-_]+/gi, '_');
           const payload = {
             filename: `granville_swim_${fileNameSafe}_${Date.now()}.csv`,
             content: csv
@@ -251,9 +273,9 @@
         const size = sizeEl.value;
         const qty = parseInt(qtyEl.value, 10);
 
-        if (!nameEl.value.trim()) {
-          alert('Please enter a name at the top.');
-          nameEl.focus();
+        if (!parentNameEl.value.trim()) {
+          alert('Please enter a parent name at the top.');
+          parentNameEl.focus();
           return;
         }
         if (!item || isNaN(price)) {
@@ -278,10 +300,21 @@
       }
 
       function resetOrder() {
-        if (order.length === 0 && !nameEl.value.trim()) return;
-        if (confirm('Clear the name and all order lines?')) {
+        if (
+          order.length === 0 &&
+          !parentNameEl.value.trim() &&
+          !swimmerNamesEl.value.trim() &&
+          !emailEl.value.trim() &&
+          !cellEl.value.trim()
+        ) {
+          return;
+        }
+        if (confirm('Clear the contact info and all order lines?')) {
           order.splice(0, order.length);
-          nameEl.value = '';
+          parentNameEl.value = '';
+          swimmerNamesEl.value = '';
+          emailEl.value = '';
+          cellEl.value = '';
           render();
         }
       }
@@ -290,46 +323,9 @@
         window.print();
       }
 
-      function downloadCSV() {
-        // Build CSV from state
-        const rows = [
-          ['Name', nameEl.value.trim()],
-          [],
-          ['Item', 'Size', 'Qty', 'Price Each', 'Line Total']
-        ];
-        order.forEach(l =>
-          rows.push([l.item, l.size, String(l.qty), l.priceEach.toFixed(2), l.total.toFixed(2)])
-        );
-        rows.push([]);
-        const grand = order.reduce((s, l) => s + l.total, 0);
-        rows.push(['Grand Total', '', '', '', grand.toFixed(2)]);
-
-        const csv = rows.map(r =>
-          r.map((cell = '') => {
-            const needsQuotes = /[",\n]/.test(cell);
-            const c = String(cell).replaceAll('"', '""');
-            return needsQuotes ? `"${c}"` : c;
-          }).join(',')
-        ).join('\n');
-
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const fileNameSafe = (nameEl.value.trim() || 'order').replace(/[^a-z0-9-_]+/gi, '_');
-        a.href = url;
-        a.download = `granville_swim_${fileNameSafe}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      }
-
       addBtn.addEventListener('click', addLine);
       resetBtn.addEventListener('click', resetOrder);
       printBtn.addEventListener('click', printOrder);
-      downloadBtn.addEventListener('click', downloadCSV);
-      //emailBtn.addEventListener('click', emailCSV);
-      //saveGitHubBtn.addEventListener('click', saveToGitHub);
       saveDropboxBtn.addEventListener('click', saveToDropbox);
 
       // Basic keyboard support: Enter key on qty adds line

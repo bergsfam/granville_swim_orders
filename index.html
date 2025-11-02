@@ -353,7 +353,7 @@
           if (!res.ok) {
             throw new Error(text || `HTTP ${res.status}`);
           }
-          alert('Saved to Dropbox! ✅');
+          alert('Order completed! ✅');
         } catch (err) {
           console.error('[SaveToDropbox] error', err);
           alert('Could not save to Dropbox. Open the browser console for details.');

@@ -43,6 +43,32 @@
     .right { text-align: right; }
     .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
     .note { color: #666; font-size: 0.95rem; }
+    .item-preview {
+      margin-top: 18px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .item-preview img {
+      width: 180px;
+      max-width: 100%;
+      border-radius: var(--radius);
+      border: 1px solid #e5e5e5;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .item-preview-details { flex: 1 1 220px; min-width: 180px; }
+    .item-preview-details h3 { margin: 0 0 6px; font-size: 1rem; }
+    .item-preview-details dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 0.95rem; }
+    .item-preview-details dt { font-weight: 600; color: #444; }
+    .item-preview-details dd { margin: 0; color: #555; }
+    .order-image {
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
   </style>
 </head>
 <body>
@@ -105,6 +131,10 @@
         <button id="addBtn" type="button" title="Add this item to the order">Add to Order</button>
       </div>
     </div>
+    <div class="item-preview" id="itemPreview" aria-live="polite">
+      <img id="itemPreviewImg" alt="" src="" hidden />
+      <div class="item-preview-details" id="itemPreviewDetails"></div>
+    </div>
     <div class="actions">
       <button id="resetBtn" class="secondary" type="button">Reset Order</button>
       <button id="printBtn" class="secondary" type="button">Print / Save PDF</button>
@@ -118,6 +148,7 @@
     <table id="orderTable" aria-label="Order items">
       <thead>
         <tr>
+          <th scope="col">Image</th>
           <th>Item</th>
           <th>Color</th>
           <th>Size</th>
@@ -132,7 +163,7 @@
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="5" class="right">Grand Total</td>
+          <td colspan="6" class="right">Grand Total</td>
           <td class="right" id="grandTotal">$0.00</td>
           <td></td>
         </tr>
@@ -158,6 +189,8 @@
       const colorEl = document.getElementById('color');
       const sizeEl = document.getElementById('size');
       const qtyEl  = document.getElementById('qty');
+      const itemPreviewImgEl = document.getElementById('itemPreviewImg');
+      const itemPreviewDetailsEl = document.getElementById('itemPreviewDetails');
       const addBtn = document.getElementById('addBtn');
       const resetBtn = document.getElementById('resetBtn');
       const printBtn = document.getElementById('printBtn');
@@ -172,28 +205,28 @@
       };
 
       const ITEMS = [
-        { id: 'team-tshirt', name: 'Team T-shirt', basePrice: 20, colors: ['Navy'], sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
-        { id: 'nike-tshirt', name: 'Nike T-shirt', basePrice: 35, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
-        { id: 'comfort-crew-sweatshirt', name: 'Comfort Crew Sweatshirt', basePrice: 40, colors: ['Navy', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
-        { id: 'gilden-crew-sweatshirt', name: 'Gilden Crew Sweatshirt', basePrice: 25, colors: ['Navy', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
-        { id: 'nike-crew-sweatshirt', name: 'Nike Crew Sweatshirt', basePrice: 55, colors: ['Navy', 'Gray'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
-        { id: 'hooded-sweatshirt', name: 'Hooded Sweatshirt', basePrice: 30, colors: ['Navy', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] },
-        { id: 'nike-fleece-quarter-zip', name: 'Nike Fleece Quarter Zip', basePrice: 55, colors: ['Navy', 'Gray', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
-        { id: 'windbreaker', name: 'Windbreaker', basePrice: 50, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL'] },
-        { id: 'nike-joggers', name: 'Nike Joggers', basePrice: 55, colors: ['Navy', 'Gray'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
-        { id: 'holloway-joggers', name: 'Holloway Joggers', basePrice: 55, colors: ['Navy', 'Gray'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
-        { id: 'womens-tank-top', name: 'Womens Tank Top', basePrice: 20, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
-        { id: 'pajama-pants', name: 'Pajama Pants', basePrice: 25, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
-        { id: 'microterary-cardigan', name: 'Microterary Cardigan', basePrice: 40, colors: ['Gray', 'Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL'] },
-        { id: 'microfiber-towel', name: 'Microfiber Towel', basePrice: 12, colors: ['Navy'], sizes: ['28x56'] },
-        { id: 'car-magnet', name: 'Car Magnet', basePrice: 5, colors: ['N/A'], sizes: ['N/A'] },
-        { id: 'chromebook-sticker', name: 'Chromebook Sticker', basePrice: 5, colors: ['N/A'], sizes: ['N/A'] }
+        { id: 'team-tshirt', name: 'Team T-shirt', basePrice: 20, colors: ['Navy'], sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'], image: 'assets/images/2025_team_shirt.jpg' },
+        { id: 'nike-tshirt', name: 'Nike T-shirt', basePrice: 35, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'], image: 'assets/images/Nike_Tshirt.jpg' },
+        { id: 'comfort-crew-sweatshirt', name: 'Comfort Crew Sweatshirt', basePrice: 40, colors: ['Navy', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'], image: 'assets/images/Comfort_colors.jpg' },
+        { id: 'gilden-crew-sweatshirt', name: 'Gilden Crew Sweatshirt', basePrice: 25, colors: ['Navy', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'], image: 'assets/images/Gildan_Crew.jpg' },
+        { id: 'nike-crew-sweatshirt', name: 'Nike Crew Sweatshirt', basePrice: 55, colors: ['Navy', 'Gray'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'], image: 'assets/images/Nike_Crew.jpg' },
+        { id: 'hooded-sweatshirt', name: 'Hooded Sweatshirt', basePrice: 30, colors: ['Navy', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'], image: 'assets/images/Gildan_Hoodie.jpg' },
+        { id: 'nike-fleece-quarter-zip', name: 'Nike Fleece Quarter Zip', basePrice: 55, colors: ['Navy', 'Gray', 'White'], sizes: ['S', 'M', 'L', 'XL', 'XXL'], image: 'assets/images/Nike_quarter_zip.jpg' },
+        { id: 'windbreaker', name: 'Windbreaker', basePrice: 50, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL'], image: 'assets/images/Windbreaker.jpg' },
+        { id: 'nike-joggers', name: 'Nike Joggers', basePrice: 55, colors: ['Navy', 'Gray'], sizes: ['S', 'M', 'L', 'XL', 'XXL'], image: 'assets/images/Nike_Jogger.jpg' },
+        { id: 'holloway-joggers', name: 'Holloway Joggers', basePrice: 55, colors: ['Navy', 'Gray'], sizes: ['S', 'M', 'L', 'XL', 'XXL'], image: 'assets/images/Jogger.jpg' },
+        { id: 'womens-tank-top', name: 'Womens Tank Top', basePrice: 20, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL'], image: 'assets/images/Tank.jpg' },
+        { id: 'pajama-pants', name: 'Pajama Pants', basePrice: 25, colors: ['Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL'], image: 'assets/images/Pajamas.jpg' },
+        { id: 'microterary-cardigan', name: 'Microterary Cardigan', basePrice: 40, colors: ['Gray', 'Navy'], sizes: ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'], image: 'assets/images/cardigan.jpg' },
+        { id: 'microfiber-towel', name: 'Microfiber Towel', basePrice: 12, colors: ['Navy'], sizes: ['28x56'], image: 'assets/images/Microfiber_towel.jpg' },
+        { id: 'car-magnet', name: 'Car Magnet', basePrice: 5, colors: ['N/A'], sizes: ['N/A'], image: 'assets/images/Car_Magnet.jpg' },
+        { id: 'chromebook-sticker', name: 'Chromebook Sticker', basePrice: 5, colors: ['N/A'], sizes: ['N/A'], image: 'assets/images/Chromebook_sticker.jpg' }
       ];
 
       const itemsById = new Map(ITEMS.map(item => [item.id, item]));
 
       /** State */
-      const order = []; // {item, color, size, qty, priceEach, total}
+      const order = []; // {item, color, size, qty, priceEach, total, image}
       function populateItemOptions() {
         itemEl.innerHTML = '';
         ITEMS.forEach((item) => {
@@ -219,12 +252,48 @@
         if (!selectedItem) {
           colorEl.innerHTML = '';
           sizeEl.innerHTML = '';
+          updatePreview(null);
           return;
         }
         populateSelectOptions(colorEl, selectedItem.colors);
         populateSelectOptions(sizeEl, selectedItem.sizes);
         colorEl.disabled = selectedItem.colors.length === 1 && selectedItem.colors[0] === 'N/A';
         sizeEl.disabled = selectedItem.sizes.length === 1 && selectedItem.sizes[0] === 'N/A';
+        updatePreview(selectedItem);
+      }
+
+      function updatePreview(item) {
+        if (!item) {
+          itemPreviewImgEl.hidden = true;
+          itemPreviewImgEl.removeAttribute('src');
+          itemPreviewImgEl.removeAttribute('alt');
+          itemPreviewDetailsEl.innerHTML = '';
+          return;
+        }
+
+        if (item.image) {
+          itemPreviewImgEl.src = item.image;
+          itemPreviewImgEl.alt = `${item.name} preview`;
+          itemPreviewImgEl.hidden = false;
+        } else {
+          itemPreviewImgEl.hidden = true;
+          itemPreviewImgEl.removeAttribute('src');
+          itemPreviewImgEl.removeAttribute('alt');
+        }
+
+        const colors = item.colors.join(', ');
+        const sizes = item.sizes.join(', ');
+        itemPreviewDetailsEl.innerHTML = `
+          <h3>${item.name}</h3>
+          <dl>
+            <dt>Price</dt>
+            <dd>$${item.basePrice.toFixed(2)}</dd>
+            <dt>Colors</dt>
+            <dd>${colors}</dd>
+            <dt>Sizes</dt>
+            <dd>${sizes}</dd>
+          </dl>
+        `;
       }
 
       function computePrice(item, size) {
@@ -307,6 +376,15 @@
         order.forEach((line, idx) => {
           const tr = document.createElement('tr');
 
+          const tdImage = document.createElement('td');
+          if (line.image) {
+            const img = document.createElement('img');
+            img.src = line.image;
+            img.alt = `${line.item} thumbnail`;
+            img.className = 'order-image';
+            tdImage.appendChild(img);
+          }
+
           const tdItem = document.createElement('td');
           tdItem.textContent = line.item;
 
@@ -339,7 +417,7 @@
           });
           tdRemove.appendChild(btn);
 
-          tr.append(tdItem, tdColor, tdSize, tdQty, tdPrice, tdTotal, tdRemove);
+          tr.append(tdImage, tdItem, tdColor, tdSize, tdQty, tdPrice, tdTotal, tdRemove);
           orderBody.appendChild(tr);
 
           grand += line.total;
@@ -389,7 +467,8 @@
           size: normalizedSize,
           qty,
           priceEach: price,
-          total
+          total,
+          image: selectedItem.image
         });
         render();
       }

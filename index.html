@@ -16,7 +16,7 @@
     }
     label { display: block; font-weight: 600; margin-top: 10px; }
     input[type="text"], input[type="number"], input[type="email"], input[type="tel"], select {
-      width: 100%; padding: 10px; border-radius: 10px;
+      width: 100%; padding: 8px; border-radius: 8px;
       border: 1px solid #dcdcdc; margin-top: 6px;
     }
     .row {
@@ -27,7 +27,7 @@
     .contact-grid {
       display: grid;
       gap: 12px;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
     .row > div { min-width: 0; }
     button {
@@ -48,6 +48,20 @@
 <body>
   <h1>Granville Swimming</h1>
   <div class="subtitle">Team Apparel Order Form</div>
+
+  <div class="card">
+    <h2 style="margin:0 0 8px; font-size:1.1rem;">Instructions</h2>
+    <p class="note" style="margin:0 0 8px; color:#333;">
+      Please input a parent name, the swimmer name or names, and an email or cell in case we need to contact you. Choose your
+      items, the sizes, and colors and click the Add to Order button. If you add something you do not want, you can click
+      Remove next to the item and remove it or Reset Order to remove all items.
+    </p>
+    <p class="note" style="margin:0; color:#333;">
+      When your order is complete, push Complete Order to send the order to the team. You can push Print / Save PDF to save a
+      copy of your order. All orders are due by November 7. If you have questions, please contact Alison Bergstrom
+      (740-971-1223) or Julie Largent (614-403-8630).
+    </p>
+  </div>
 
   <div class="card">
     <div class="contact-grid">
@@ -94,7 +108,7 @@
     <div class="actions">
       <button id="resetBtn" class="secondary" type="button">Reset Order</button>
       <button id="printBtn" class="secondary" type="button">Print / Save PDF</button>
-      <button id="saveDropboxBtn" class="secondary" type="button">Save to Dropbox</button>
+      <button id="saveDropboxBtn" class="secondary" type="button">Complete Order</button>
     </div>
   </div>
 
